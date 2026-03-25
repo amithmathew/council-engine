@@ -112,14 +112,32 @@ class RichTranscriptRenderer:
         self._console = Console(stderr=True)
         self._out = Console()
 
+    def _pause_live(self) -> bool:
+        """Temporarily stop the Live spinner so stdout output doesn't collide.
+
+        Returns True if the spinner was active and was paused.
+        """
+        if hasattr(self, "_live") and self._live is not None:
+            self._live.stop()
+            return True
+        return False
+
+    def _resume_live(self) -> None:
+        """Restart the Live spinner after a pause."""
+        if hasattr(self, "_live") and self._live is not None:
+            self._live.start()
+
     def emit(self, event: UiEvent) -> None:
         if event.type == "stage_start":
             from rich.rule import Rule
             label = (event.stage or "").capitalize()
             if event.participant:
                 label += f" ({event.participant})"
+            paused = self._pause_live()
             self._out.print()
             self._out.print(Rule(f"[bold]{label}[/]", style="dim"))
+            if paused:
+                self._resume_live()
 
         elif event.type == "stage_end":
             pass
@@ -137,19 +155,25 @@ class RichTranscriptRenderer:
                 role = "  [dim italic]synthesizer[/]"
             elif event.stage == "followup":
                 role = "  [dim italic]lead[/]"
+            paused = self._pause_live()
             self._out.print()
             self._out.print(f"[bold {style}]{participant}[/]{role}{elapsed_str}")
             if event.text:
                 md = Markdown(event.text)
                 self._out.print(md, width=self._out.width - 2)
             self._out.print("[dim]─[/]" * min(40, self._out.width // 2))
+            if paused:
+                self._resume_live()
 
         elif event.type == "pass":
             participant = event.participant or "unknown"
             style = PARTICIPANT_STYLES.get(participant, "white")
             reason = f"  [dim]({event.text})[/]" if event.text else ""
             elapsed_str = f"  [dim]{event.elapsed:.1f}s[/]" if event.elapsed else ""
+            paused = self._pause_live()
             self._out.print(f"[{style}]{participant}[/]  [dim]pass[/]{reason}{elapsed_str}")
+            if paused:
+                self._resume_live()
 
         elif event.type == "critique":
             from rich.markdown import Markdown
@@ -158,11 +182,14 @@ class RichTranscriptRenderer:
             kind = event.kind or "contribute"
             target_str = f" → {event.target}" if event.target else ""
             elapsed_str = f"  [dim]{event.elapsed:.1f}s[/]" if event.elapsed else ""
+            paused = self._pause_live()
             self._out.print()
             self._out.print(f"[bold {style}]{participant}[/]  [italic]{kind}[/]{target_str}{elapsed_str}")
             if event.text:
                 md = Markdown(event.text)
                 self._out.print(md, width=self._out.width - 2)
+            if paused:
+                self._resume_live()
 
         elif event.type == "status":
             self._console.print(f"[dim]· {event.text or ''}[/]")
@@ -202,8 +229,9 @@ class RichTranscriptRenderer:
                     self._live.stop()
                     self._live = None
                 elif self._generating and hasattr(self, "_spinner"):
+                    from rich.text import Text
                     label = ", ".join(sorted(self._generating))
-                    self._spinner.text = f"[cyan]{label}[/] thinking..."
+                    self._spinner.text = Text.from_markup(f"[cyan]{label}[/] thinking...")
 
         elif event.type == "operator_request":
             participant = event.participant or "unknown"

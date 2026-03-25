@@ -169,7 +169,7 @@ import "../styles/global.css";
         <div class="delib-board">
           <div class="delib-header">
             <span class="eyebrow">Real deliberation</span>
-            <span class="delib-meta">2 models &middot; 3 stages &middot; 1 synthesis</span>
+            <span class="delib-meta">2 models &middot; 3 stages &middot; 1 follow-up question</span>
           </div>
           <p class="delib-prompt">
             "We're a 4-person team running a customer-facing API. After 3 deploy incidents this month, the VP of Engineering wants us to add a staging environment. I think that'll slow us down and the real problem is our lack of observability. We ship 5-10 times a week and I don't want to lose that velocity. How should I make this case, or am I wrong?"
@@ -183,9 +183,9 @@ import "../styles/global.css";
                 <span class="card-model">chatgpt</span>
                 <span class="card-stage">proposal</span>
               </div>
-              <p class="card-title">Observability + progressive delivery before staging</p>
+              <p class="card-title">Fix the failure modes first &mdash; add staging only if incidents are integration gaps prod-safe testing can't catch</p>
               <p class="card-body">
-                A small team gets more risk reduction from fast feedback in the real path to production &mdash; deploy health checks, canaries, rollback automation, and strong telemetry &mdash; than from maintaining a second long-lived environment that tends to drift. Staging is weakest at catching failures caused by real production traffic shape and data skew.
+                Your incident pattern matters more than the generic best practice. A staging environment often catches less than leaders expect because it rarely matches real production traffic, data shape, or integrations. The politically smart argument is not &ldquo;staging is dumb&rdquo; &mdash; it is: fix the incident classes you actually had, with the cheapest controls that would have prevented them.
               </p>
             </div>
             <div class="delib-card" style="--participant-color: var(--gemini);">
@@ -194,9 +194,9 @@ import "../styles/global.css";
                 <span class="card-model">gemini</span>
                 <span class="card-stage">proposal</span>
               </div>
-              <p class="card-title">Progressive delivery pipeline instead of staging</p>
+              <p class="card-title">Reject staging &mdash; implement feature flags and automated rollbacks driven by observability</p>
               <p class="card-body">
-                A traditional staging environment incurs a massive maintenance tax &mdash; data drift, config rot &mdash; that drains engineering cycles from a small team. But observability alone only detects outages faster. You need feature flags, canary deployments, and automated rollbacks to actually prevent customer impact.
+                Staging environments inevitably drift from production, creating a false sense of security while bottlenecking a 4-person team into a rigid deployment queue. Progressive delivery solves the VP's underlying goal &mdash; eliminating customer-facing incidents &mdash; while preserving your 5&ndash;10x weekly velocity.
               </p>
             </div>
           </div>
@@ -207,41 +207,67 @@ import "../styles/global.css";
               <div class="card-identity">
                 <span class="card-dot" style="background: var(--chatgpt);"></span>
                 <span class="card-model">chatgpt</span>
-                <span class="card-stage">refinement</span>
+                <span class="card-stage">challenge &rarr; gemini</span>
               </div>
               <p class="card-body">
-                You're both underweighting the middle ground: a full long-lived staging env isn't the only pre-prod option. Ephemeral prod-like preview environments plus deploy-time synthetic smoke tests catch the incident classes staging is actually good at, without permanent environment drift.
+                Gemini is overclaiming on feature flags. Flags do not prevent customer impact for schema changes, config errors, dependency/runtime issues, bad migrations, or deploy-time infrastructure mistakes &mdash; the exact classes staging can catch. The critical question is not &ldquo;staging vs flags&rdquo; but whether the 3 incidents were release-control failures or environment/integration failures.
               </p>
             </div>
           </div>
 
-          <!-- Synthesis row -->
+          <!-- Synthesis row: Question resolution -->
           <div class="delib-synthesis">
+            <div class="delib-card synth-card synth-question">
+              <div class="card-identity">
+                <span class="card-dot" style="background: var(--synth);"></span>
+                <span class="card-model">synthesis</span>
+                <span class="card-stage">question</span>
+              </div>
+              <p class="card-body">
+                Were your recent deploy incidents caused by <strong>structural issues</strong> (config drift, missing env vars, schema mismatches) or <strong>emergent issues</strong> (production data edge cases, unexpected traffic, stateful third-party behaviors)? A staging environment primarily catches structural errors. Observability and progressive delivery primarily mitigate emergent errors.
+              </p>
+            </div>
+
+            <!-- User answer -->
+            <div class="delib-card user-card">
+              <div class="card-identity">
+                <span class="card-dot" style="background: var(--user);"></span>
+                <span class="card-model">you</span>
+              </div>
+              <p class="card-body">Not sure, but I believe they were structural.</p>
+            </div>
+
+            <!-- Re-resolution -->
             <div class="delib-card synth-card">
               <div class="card-identity">
                 <span class="card-dot" style="background: var(--synth);"></span>
                 <span class="card-model">synthesis</span>
-                <span class="card-stage">recommendation</span>
+                <span class="card-stage">investigate</span>
               </div>
-              <p class="card-title">Counter the VP with a progressive delivery pipeline &mdash; but ground it in your actual incident data</p>
+              <p class="card-title">Don't push back on the VP yet &mdash; verify your hunch first</p>
               <p class="card-body">
-                You are partially correct: a long-lived staging environment will crush a 4-person team's velocity. However, proposing only observability is a losing argument because observability detects outages &mdash; it doesn't prevent them. Propose progressive delivery (canaries + automated rollbacks) and justify it by proving these tools would have caught the specific root causes of your recent incidents.
+                If the incidents were truly structural, your VP is right: feature flags and observability do not prevent structural deploy failures. But you're unsure. Pull the post-mortems, categorize each failure, and ask: would staging have realistically caught this without production-scale traffic?
               </p>
               <div class="synth-sections">
                 <div class="synth-detail">
-                  <span class="synth-label">risk</span>
-                  <span>The VP may interpret "no staging" as "testing in production without a net." Your alternative must include strict, automated guardrails.</span>
+                  <span class="synth-label">provisional</span>
+                  <span>Go to the VP: &ldquo;Give me 48 hours to map the exact failure modes of the last three incidents so we invest in the right safety net without killing our velocity.&rdquo;</span>
                 </div>
                 <div class="synth-detail">
-                  <span class="synth-label">next step</span>
-                  <span>Create a 1-page incident taxonomy of the 3 recent failures. If they were data/load-driven, pitch canaries. If config/integration, pitch ephemeral preview environments.</span>
+                  <span class="synth-label">if structural</span>
+                  <span>Build ephemeral preview environments per PR &mdash; automated pre-prod verification without the permanent staging tax.</span>
+                </div>
+                <div class="synth-detail">
+                  <span class="synth-label">if emergent</span>
+                  <span>Show the VP the data proving staging wouldn't have caught the bugs, and pitch progressive delivery: feature flags, canaries, and automated fast-rollbacks.</span>
                 </div>
               </div>
             </div>
           </div>
 
           <p class="delib-caption">
-            Real output from a Council session. Two models proposed independently, critiqued each other, and produced a synthesis with concrete next steps.
+            Real output from a Council session. The council identified a missing fact, asked a clarifying question, and re-resolved with the answer.
+            <a href="/deliberation" class="delib-full-link">View full deliberation &rarr;</a>
           </p>
         </div>
       </div>
@@ -349,7 +375,7 @@ import "../styles/global.css";
         <p>Configure your providers. Supports Gemini, ChatGPT, Claude, and Ollama.</p>
         <pre><code>council init</code></pre>
 
-        <p>Run your first deliberation.</p>
+        <p>Invoke your first council.</p>
         <pre><code>council</code></pre>
 
         <p class="quickstart-hint">
@@ -716,6 +742,16 @@ import "../styles/global.css";
     border-top-color: var(--synth);
   }
 
+  .synth-question {
+    margin-bottom: 12px;
+  }
+
+  /* User answer card */
+  .user-card {
+    border-top: 3px solid var(--user);
+    margin-bottom: 12px;
+  }
+
   .synth-sections {
     margin-top: 16px;
     display: flex;
@@ -749,6 +785,19 @@ import "../styles/global.css";
     margin-top: 20px;
     font-style: italic;
     max-width: none;
+  }
+
+  .delib-full-link {
+    display: inline-block;
+    margin-top: 6px;
+    font-style: normal;
+    font-family: var(--font-code);
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  .delib-full-link:hover {
+    color: var(--accent-hover);
   }
 
   /* ====== Architecture Grid ====== */

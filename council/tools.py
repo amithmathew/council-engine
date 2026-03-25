@@ -126,18 +126,18 @@ CALL_CONTRIBUTE_V1 = ToolSpec(
 CALL_PASS = ToolSpec(
     name="call_pass",
     description=(
-        "Yield the floor. Use this IMMEDIATELY if you have no critical flaws "
-        "to point out. Do not explain why you are passing — just call this tool."
+        "Yield the floor. Use this if you have no critical flaws to point out. "
+        "Provide a brief reason so the council understands your assessment."
     ),
     parameters={
         "type": "object",
         "properties": {
             "reason": {
                 "type": "string",
-                "description": "Optional brief reason for passing.",
+                "description": "Brief reason for passing (e.g. 'positions are sound', 'no material gaps').",
             },
         },
-        "required": [],
+        "required": ["reason"],
     },
     kind="terminal",
 )

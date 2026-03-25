@@ -1,0 +1,731 @@
+---
+import "../styles/global.css";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="Full deliberation transcript — Council Engine running ChatGPT and Gemini on a real engineering decision." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=block" as="style" />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=block" rel="stylesheet" />
+    <title>Example Deliberation — Council</title>
+  </head>
+  <body>
+
+    <!-- Nav -->
+    <nav class="site-nav">
+      <div class="nav-inner wrap-lg">
+        <a href="/" class="nav-logo">Council</a>
+        <div class="nav-links">
+          <a href="/#protocol">Protocol</a>
+          <a href="/#science">Science</a>
+          <a href="/architecture">Architecture</a>
+          <a href="/#start">Start</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Header -->
+    <section class="delib-hero">
+      <div class="wrap-md">
+        <p class="eyebrow">Example deliberation</p>
+        <h1>Staging environment vs. progressive delivery</h1>
+        <div class="delib-hero-meta">
+          <span class="meta-item"><span class="meta-label">participants</span> gemini, chatgpt</span>
+          <span class="meta-sep">&middot;</span>
+          <span class="meta-item"><span class="meta-label">stages</span> proposals &rarr; critique &rarr; resolution</span>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Prompt -->
+    <section class="delib-section" id="prompt">
+      <div class="wrap-sm">
+        <p class="eyebrow">Prompt</p>
+        <blockquote class="transcript-prompt">
+          We're a 4-person team running a customer-facing API. After 3 deploy incidents this month, the VP of Engineering wants us to add a staging environment. I think that'll slow us down and the real problem is our lack of observability. We ship 5&ndash;10 times a week and I don't want to lose that velocity. How should I make this case, or am I wrong?
+        </blockquote>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Stage 1: Proposals -->
+    <section class="delib-section" id="proposals">
+      <div class="wrap-sm">
+        <p class="eyebrow">Stage 1</p>
+        <h2>Proposals</h2>
+        <p class="stage-desc">Each model responds independently to the same prompt.</p>
+
+        <!-- ChatGPT Proposal -->
+        <div class="transcript-card" style="--participant-color: var(--chatgpt);">
+          <div class="transcript-identity">
+            <span class="transcript-dot" style="background: var(--chatgpt);"></span>
+            <span class="transcript-model">chatgpt</span>
+            <span class="transcript-timing">14.3s</span>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">position</span>
+            <p>Don't lead with &ldquo;no staging&rdquo;; lead with &ldquo;fix the failure modes first with observability + safer production rollout controls, and add staging only if incidents are caused by integration gaps that prod-safe testing can't catch.&rdquo;</p>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">why</span>
+            <ul>
+              <li>A staging environment is expensive for a 4-person team and usually decays into a false-confidence system unless it is kept production-like in data shape, dependencies, config, traffic patterns, and deploy process; most small teams cannot maintain that rigor without paying a real velocity tax.</li>
+              <li>Your incident pattern matters more than the slogan. If the last 3 deploy incidents were &ldquo;we couldn't see breakage quickly, didn't know blast radius, and rolled back slowly,&rdquo; then staging is treating the wrong problem; observability, health checks, canaries, feature flags, and fast rollback directly target that class of failure.</li>
+              <li>Shipping 5&ndash;10 times per week is compatible with reliability if production deploys are made low-risk: progressive delivery, automated smoke tests, deploy-time alerts, and explicit rollback playbooks preserve speed better than inserting a heavyweight pre-prod gate.</li>
+              <li>If incidents were caused by environment/config drift, multi-service contract mismatches, migration sequencing, or third-party integration behavior that only appears in a production-like system, then staging is justified; otherwise it is often bureaucracy disguised as safety.</li>
+            </ul>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">assumptions</span>
+            <ul>
+              <li>The incidents were primarily detection/diagnosis/rollback failures rather than bugs that would have been consistently caught in a realistic pre-production environment.</li>
+              <li>Your team can implement meaningful observability and rollout controls within weeks, not quarters.</li>
+              <li>The VP cares about measurable risk reduction, not specifically about the symbol of having &ldquo;a staging environment.&rdquo;</li>
+            </ul>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">risks</span>
+            <ul>
+              <li>You may be underestimating how many failures came from integration and config issues; if so, arguing against staging will look defensive and wrong.</li>
+              <li>&ldquo;Observability first&rdquo; can sound like an engineer preference unless you translate it into operational outcomes: lower MTTR, smaller blast radius, fewer customer-visible incidents, and faster safe deploys.</li>
+              <li>If you oppose staging without proposing concrete controls, leadership may conclude the team is resisting accountability rather than optimizing reliability.</li>
+            </ul>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">switch if</span>
+            <ul>
+              <li>Postmortems show even a modest production-like environment would have caught 2+ of the 3 incidents before release.</li>
+              <li>Compliance, enterprise customer expectations, or internal platform standards make a staging environment strategically necessary regardless of pure engineering efficiency.</li>
+            </ul>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">next step</span>
+            <p>Write a one-page incident review comparing the last 3 deploy failures against a matrix of &ldquo;would staging have prevented this?&rdquo; vs. &ldquo;would observability/canary/rollback have prevented or contained this?&rdquo;, then propose a 30-day reliability plan with explicit metrics.</p>
+          </div>
+        </div>
+
+        <!-- Gemini Proposal -->
+        <div class="transcript-card" style="--participant-color: var(--gemini);">
+          <div class="transcript-identity">
+            <span class="transcript-dot" style="background: var(--gemini);"></span>
+            <span class="transcript-model">gemini</span>
+            <span class="transcript-timing">14.5s</span>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">position</span>
+            <p>Reject the staging environment in favor of implementing feature flags and automated rollbacks driven by your proposed observability improvements.</p>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">why</span>
+            <ul>
+              <li>Staging environments inevitably drift from production, creating a false sense of security while bottlenecking a 4-person team into a rigid deployment queue.</li>
+              <li>Observability alone only reduces Mean Time To Recovery; pairing it with feature flags prevents customer impact entirely by safely isolating new code in production.</li>
+              <li>Progressive delivery solves the VP's underlying goal (eliminating customer-facing incidents) while preserving your 5&ndash;10x weekly velocity.</li>
+            </ul>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">assumptions</span>
+            <ul>
+              <li>The recent deploy incidents were caused by data edge cases or real-world traffic patterns that a sterile staging environment wouldn't have caught anyway.</li>
+              <li>Your API architecture and data layer support decoupling deployment from release (e.g., backward-compatible database migrations).</li>
+            </ul>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">risks</span>
+            <ul>
+              <li>The VP likely holds a traditional mental model of release management and may initially view &ldquo;testing in production&rdquo; as reckless.</li>
+              <li>Feature flag hygiene can degrade if the team fails to aggressively clean up stale flags, leading to exponential testing complexity.</li>
+            </ul>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">switch if</span>
+            <ul>
+              <li>The recent incidents were strictly caused by infrastructure or environment configuration changes, which a staging environment is actually designed to catch.</li>
+              <li>Your API relies on stateful third-party integrations that explicitly prohibit or cannot handle production testing traffic.</li>
+            </ul>
+          </div>
+
+          <div class="transcript-section">
+            <span class="transcript-label">next step</span>
+            <p>Draft a one-page &ldquo;Production Safety Strategy&rdquo; for the VP that details how feature flags plus enhanced observability will achieve zero-downtime rollbacks faster and cheaper than maintaining a separate staging cluster.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Stage 2: Critique -->
+    <section class="delib-section" id="critique">
+      <div class="wrap-sm">
+        <p class="eyebrow">Stage 2</p>
+        <h2>Critique</h2>
+        <p class="stage-desc">Models review each other's proposals through a constrained vocabulary: challenge, alternative, refinement, or question.</p>
+
+        <div class="transcript-card critique" style="--participant-color: var(--gemini);">
+          <div class="transcript-identity">
+            <span class="transcript-dot" style="background: var(--gemini);"></span>
+            <span class="transcript-model">gemini</span>
+            <span class="transcript-badge">refinement</span>
+            <span class="transcript-timing">2.0s</span>
+          </div>
+
+          <p class="transcript-body">
+            Include an analysis of the last three incidents showing how this approach would have mitigated them.
+          </p>
+        </div>
+
+        <div class="transcript-card critique" style="--participant-color: var(--chatgpt);">
+          <div class="transcript-identity">
+            <span class="transcript-dot" style="background: var(--chatgpt);"></span>
+            <span class="transcript-model">chatgpt</span>
+            <span class="transcript-badge">challenge &rarr; gemini</span>
+            <span class="transcript-timing">3.0s</span>
+          </div>
+
+          <p class="transcript-body">
+            Gemini is overclaiming on feature flags. Flags do not prevent customer impact for schema changes, config errors, dependency/runtime issues, bad migrations, or deploy-time infrastructure mistakes&mdash;the exact classes staging can catch. The critical question is not &ldquo;staging vs flags&rdquo; but whether the 3 incidents were release-control failures or environment/integration failures.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Stage 3: Resolution -->
+    <section class="delib-section" id="resolution">
+      <div class="wrap-sm">
+        <p class="eyebrow">Stage 3</p>
+        <h2>Resolution</h2>
+        <p class="stage-desc">The lead model synthesizes proposals and critiques. When a decisive fact is missing, Council asks the user before resolving.</p>
+
+        <!-- Initial resolution: Question -->
+        <div class="transcript-card resolution">
+          <div class="transcript-identity">
+            <span class="transcript-dot" style="background: var(--synth);"></span>
+            <span class="transcript-model">synthesis</span>
+            <span class="transcript-badge resolution-type">question</span>
+            <span class="transcript-timing">34.1s</span>
+          </div>
+
+          <p class="transcript-body">
+            To resolve this, we need to look at the exact root causes of your recent incidents. ChatGPT correctly notes that Gemini is overclaiming the power of feature flags&mdash;flags won't save you from a bad database migration, a missing environment variable, or a hard schema mismatch.
+          </p>
+
+          <p class="transcript-body">
+            The VP is reacting to the symptom (customer-facing incidents) with a traditional solution (staging). To effectively make your case (or realize you are wrong), you must map your specific failures to the right technical control.
+          </p>
+
+          <div class="resolution-section">
+            <h4>The decisive question</h4>
+            <p>Were your recent deploy incidents caused by <strong>structural issues</strong> (e.g., config drift, missing environment variables, schema mismatches) or <strong>emergent issues</strong> (e.g., production data edge cases, unexpected traffic volume, stateful third-party behaviors)?</p>
+            <p>Why it matters: A staging environment primarily catches structural errors. Observability and progressive delivery primarily mitigate emergent errors. If you build a staging environment to catch emergent data issues, you will pay a massive velocity tax for a false sense of security, and the incidents will continue.</p>
+          </div>
+
+          <div class="resolution-section">
+            <h4>Conditional recommendations</h4>
+            <p><strong>If the incidents were structural (config, schema, infrastructure):</strong> You must add a pre-production testing gate; the VP's instinct is correct. However, to preserve your 5&ndash;10 deploys per week, do not build a static, shared staging server that developers have to queue up for. Instead, build ephemeral preview environments spun up automatically per PR. Frame this to the VP as &ldquo;Automated Pre-Prod Verification&rdquo; rather than a traditional staging bottleneck.</p>
+            <p><strong>If the incidents were emergent (data scale, traffic patterns, edge cases):</strong> You are right to push back on staging, but asking for &ldquo;observability&rdquo; sounds like a passive engineering luxury to a VP dealing with outages. Instead, pitch a Production Safety Strategy. Write a 1-page memo mapping the last 3 incidents to prove that staging would not have caught them. Propose a concrete 30-day plan to implement progressive delivery: feature flags, canary deployments, and automated fast-rollbacks triggered by the new observability metrics you want to build.</p>
+          </div>
+        </div>
+
+        <!-- User answer -->
+        <div class="transcript-card user-answer">
+          <div class="transcript-identity">
+            <span class="transcript-dot" style="background: var(--user);"></span>
+            <span class="transcript-model">you</span>
+          </div>
+          <p class="transcript-body">Not sure, but I believe they were structural.</p>
+        </div>
+
+        <!-- Re-resolution: Investigate -->
+        <div class="transcript-card resolution">
+          <div class="transcript-identity">
+            <span class="transcript-dot" style="background: var(--synth);"></span>
+            <span class="transcript-model">synthesis</span>
+            <span class="transcript-badge resolution-type">investigate</span>
+            <span class="transcript-timing">69.4s</span>
+          </div>
+
+          <div class="resolution-section" style="margin-top: 0; padding-top: 0; border-top: none;">
+            <h4>The core tradeoff</h4>
+            <p>You are prioritizing velocity and runtime mitigation (observability), while your VP is prioritizing pre-release structural validation (staging). If your hunch is correct and the recent incidents were truly &ldquo;structural&rdquo; (e.g., bad database migrations, infrastructure configuration errors, broken dependency contracts), your VP is right. Feature flags and observability do not prevent structural deploy failures; they only help you watch them burn faster.</p>
+          </div>
+
+          <div class="resolution-section">
+            <h4>Investigation plan</h4>
+            <p>Because you are unsure, you must look at the verifiable evidence of the last 3 incidents before making your case.</p>
+            <ol>
+              <li><strong>Categorize the failures:</strong> Pull the post-mortems or tickets. Were they structural (schema, infra config) or data-driven (unexpected customer payloads, scale issues)?</li>
+              <li><strong>The staging test:</strong> For each incident, ask: Would a staging environment have realistically caught this without production-scale traffic?</li>
+              <li><strong>The observability test:</strong> For each incident, ask: Would observability and feature flags have prevented customer impact, or just alerted us to a broken API slightly faster?</li>
+            </ol>
+          </div>
+
+          <div class="resolution-section provisional-default">
+            <h4>Provisional default</h4>
+            <p>Do not push back on the VP yet. Go to them and say:</p>
+            <blockquote class="resolution-quote">
+              &ldquo;I agree we need to stop these deploy incidents. Give me 48 hours to map the exact failure modes of the last three incidents. I want to determine if a staging environment or better rollout controls (like feature flags and observability) would have actually prevented them, so we invest in the right safety net without killing our 5&ndash;10x weekly velocity.&rdquo;
+            </blockquote>
+          </div>
+
+          <div class="resolution-section">
+            <h4>What to do with the results</h4>
+            <p><strong>If the investigation confirms structural issues:</strong> You need pre-production validation. However, you can still protect your velocity. Instead of a traditional, static staging environment (which bottlenecks 4-person teams), propose ephemeral environments. Spin up a temporary, production-like environment for every Pull Request, run automated integration tests, and tear it down upon merge. This gives the VP structural safety without the permanent staging tax.</p>
+            <p><strong>If the investigation reveals data/runtime issues:</strong> A staging environment would have provided a false sense of security. Show the VP the data proving that staging wouldn't have caught the bugs, but that observability and progressive delivery would have safely contained them.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="wrap-md footer-inner">
+        <span class="footer-logo">Council</span>
+        <span class="footer-sep">&middot;</span>
+        <a href="/">Home</a>
+        <span class="footer-sep">&middot;</span>
+        <a href="/architecture">Architecture</a>
+        <span class="footer-sep">&middot;</span>
+        <a href="https://github.com/amithmathew/council-engine" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </footer>
+
+  </body>
+</html>
+
+<style>
+  /* Nav (shared) */
+  .site-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: var(--nav-height);
+    background: rgba(11, 13, 16, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .nav-logo {
+    font-family: var(--font-heading);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 28px;
+  }
+
+  .nav-links a {
+    font-family: var(--font-code);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .nav-links a:hover {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  /* Hero */
+  .delib-hero {
+    padding-top: 128px;
+    padding-bottom: 64px;
+  }
+
+  .delib-hero h1 {
+    font-size: var(--fs-h2);
+    margin-bottom: 24px;
+  }
+
+  .delib-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    font-family: var(--font-code);
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .meta-label {
+    font-weight: 600;
+    color: var(--text-soft);
+    margin-right: 6px;
+  }
+
+  .meta-sep {
+    color: var(--line-strong);
+  }
+
+  /* Section layout */
+  .delib-section {
+    padding-block: 64px;
+  }
+
+  .stage-desc {
+    color: var(--text-soft);
+    margin-bottom: 32px;
+  }
+
+  /* Prompt blockquote */
+  .transcript-prompt {
+    font-family: var(--font-heading);
+    font-size: var(--fs-body-lg);
+    font-style: italic;
+    color: var(--text-soft);
+    line-height: 1.7;
+    max-width: none;
+    padding: 24px 28px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+  }
+
+  /* Transcript cards */
+  .transcript-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+    margin-bottom: 24px;
+    border-top: 3px solid var(--participant-color, var(--line));
+  }
+
+  .transcript-card.critique {
+    border-top: none;
+    border-left: 3px solid var(--participant-color, var(--line));
+  }
+
+  .transcript-card.resolution {
+    border-top: 3px solid var(--synth);
+    background: linear-gradient(180deg, rgba(199, 121, 255, 0.04), var(--bg-panel));
+    border-color: rgba(199, 121, 255, 0.15);
+    border-top-color: var(--synth);
+  }
+
+  .transcript-identity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .transcript-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .transcript-model {
+    font-family: var(--font-code);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .transcript-badge {
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-faint);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 2px 10px;
+    border-radius: 4px;
+    margin-left: 4px;
+  }
+
+  .transcript-badge.resolution-type {
+    color: var(--synth);
+    background: rgba(199, 121, 255, 0.08);
+  }
+
+  .transcript-timing {
+    font-family: var(--font-code);
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-left: auto;
+  }
+
+  /* Structured sections within proposal cards */
+  .transcript-section {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .transcript-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .transcript-label {
+    display: inline-block;
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--participant-color, var(--text-muted));
+    margin-bottom: 8px;
+  }
+
+  .transcript-section p {
+    font-size: var(--fs-small);
+    color: var(--text-soft);
+    line-height: 1.65;
+    max-width: none;
+    margin-bottom: 0;
+  }
+
+  .transcript-section ul,
+  .transcript-section ol {
+    list-style: none;
+    padding: 0;
+  }
+
+  .transcript-section li {
+    font-size: var(--fs-small);
+    color: var(--text-soft);
+    line-height: 1.6;
+    margin-bottom: 6px;
+    padding-left: 16px;
+    position: relative;
+  }
+
+  .transcript-section li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--line-strong);
+  }
+
+  /* Critique body */
+  .transcript-body {
+    font-size: var(--fs-small);
+    color: var(--text-soft);
+    line-height: 1.65;
+    max-width: none;
+  }
+
+  /* Resolution sections */
+  .resolution-title {
+    font-size: var(--fs-h3);
+    line-height: 1.3;
+    margin-bottom: 20px;
+  }
+
+  .resolution-section {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+
+  .resolution-section h4 {
+    font-family: var(--font-code);
+    font-size: var(--fs-small);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+
+  .resolution-section p {
+    font-size: var(--fs-small);
+    color: var(--text-soft);
+    line-height: 1.65;
+    max-width: none;
+  }
+
+  .resolution-section ul,
+  .resolution-section ol {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 12px;
+  }
+
+  .resolution-section li {
+    font-size: var(--fs-small);
+    color: var(--text-soft);
+    line-height: 1.6;
+    margin-bottom: 6px;
+    padding-left: 16px;
+    position: relative;
+  }
+
+  .resolution-section ul li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--line-strong);
+  }
+
+  .resolution-section ol {
+    counter-reset: step;
+  }
+
+  .resolution-section ol li::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: none;
+    font-family: var(--font-code);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  /* User answer card */
+  .user-answer {
+    border-top: 3px solid var(--user);
+    margin-bottom: 24px;
+  }
+
+  /* Provisional default blockquote */
+  .provisional-default {
+    background: rgba(199, 121, 255, 0.03);
+    border: 1px solid rgba(199, 121, 255, 0.1);
+    border-radius: 10px;
+    padding: 20px 24px;
+    border-top: none;
+    margin-top: 28px;
+  }
+
+  .provisional-default h4 {
+    color: var(--synth);
+  }
+
+  .resolution-quote {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-size: var(--fs-body);
+    color: var(--text-soft);
+    line-height: 1.7;
+    max-width: none;
+    padding: 16px 20px;
+    margin-top: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border-left: 3px solid var(--synth);
+  }
+
+  .suggested-position {
+    background: rgba(199, 121, 255, 0.03);
+    border: 1px solid rgba(199, 121, 255, 0.1);
+    border-radius: 10px;
+    padding: 20px 24px;
+    border-top: none;
+    margin-top: 28px;
+  }
+
+  .suggested-position h4 {
+    color: var(--synth);
+  }
+
+  .suggested-position p {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-size: var(--fs-body);
+    color: var(--text-soft);
+    line-height: 1.7;
+  }
+
+  /* Footer */
+  .site-footer {
+    padding: 40px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: var(--fs-small);
+    color: var(--text-faint);
+    flex-wrap: wrap;
+  }
+
+  .footer-logo {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .footer-sep {
+    color: var(--line-strong);
+  }
+
+  @media (max-width: 640px) {
+    .nav-links {
+      display: none;
+    }
+
+    .delib-hero {
+      padding-top: 80px;
+      padding-bottom: 40px;
+    }
+
+    .delib-section {
+      padding-block: 40px;
+    }
+
+    .transcript-card {
+      padding: 20px;
+    }
+  }
+</style>

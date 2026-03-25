@@ -94,12 +94,13 @@ _PROPOSAL_STRUCTURE_PROMPT = (
 
 _CRITIQUE_PROMPT = (
     "STAGE 2: CRITIQUE.\n\n"
-    "You are reviewing proposals from the other council participants. "
-    "Your own proposal has been excluded so you can focus entirely on critiquing their approaches.\n\n"
+    "You are reviewing proposals from the other council participants.\n\n"
     "Your ONLY job is to identify critical flaws, blind spots, faulty assumptions, "
     "or materially better alternatives.\n\n"
-    "DO NOT praise. DO NOT say 'I agree'. DO NOT summarize. DO NOT restate your own position.\n\n"
-    "If the positions are sound, you MUST invoke call_pass() immediately as your very first action. "
+    "DO NOT praise. DO NOT say 'I agree'. DO NOT summarize. DO NOT restate your own position.\n"
+    "DO NOT respond with plain text — you MUST end your turn by calling exactly one tool: "
+    "either call_pass() or call_contribute().\n\n"
+    "If the positions are sound, call call_pass(reason='...') with a brief reason. "
     "Silence is approval.\n\n"
     "Only call call_contribute if you can provide at least one of:\n"
     "- A concrete flaw or blind spot (kind='challenge')\n"
@@ -561,13 +562,30 @@ async def _stage_critique(
                         text=result.terminal_payload,
                         stage="critique", elapsed=elapsed,
                     ))
-            elif isinstance(result, ModelResponse) and result.text:
-                # Model responded with text without using tools — treat as critique
-                _emit(sink, UiEvent(
-                    type="critique", participant=provider.name,
-                    text=result.text, kind="refinement",
-                    stage="critique", elapsed=elapsed,
-                ))
+            elif isinstance(result, ModelResponse):
+                # Model responded with text without using tools
+                text = (result.text or "").strip()
+                if len(text) > 20 and not text.startswith("("):
+                    # Substantive text — treat as unstructured critique
+                    log.debug(
+                        "%s responded with text instead of tools in critique; "
+                        "treating as refinement", provider.name,
+                    )
+                    _emit(sink, UiEvent(
+                        type="critique", participant=provider.name,
+                        text=text, kind="refinement",
+                        stage="critique", elapsed=elapsed,
+                    ))
+                else:
+                    # Too short, meta-commentary, or empty — treat as pass
+                    log.debug(
+                        "%s responded with non-substantive text in critique; "
+                        "treating as pass: %r", provider.name, text[:80],
+                    )
+                    _emit(sink, UiEvent(
+                        type="pass", participant=provider.name,
+                        stage="critique", elapsed=elapsed,
+                    ))
 
             results.append((provider, result))
 

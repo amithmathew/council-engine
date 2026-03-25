@@ -296,11 +296,24 @@ class CouncilRepl:
             if len(self.providers) > 1:
                 self._post_synthesis = True
                 self._lead_provider = self.providers[0]
+                self._show_post_discussion_hints()
         except asyncio.CancelledError:
             self.renderer.cleanup()
             self.renderer.emit(UiEvent(type="status", text="Interrupted."))
         finally:
             self._current_task = None
+
+    def _show_post_discussion_hints(self) -> None:
+        """Print suggested next actions after a council discussion."""
+        from rich.console import Console
+        lead = self._lead_provider.name if self._lead_provider else "model"
+        console = Console(stderr=True)
+        console.print()
+        console.print(f"  [dim]/discuss <msg>[/]    reconvene the full council")
+        console.print(f"  [dim]/save[/]             save the discussion to a file")
+        console.print(f"  [dim]<message>[/]         follow up with {lead} directly")
+        console.print(f"  [dim]@model <msg>[/]      ask a specific model")
+        console.print()
 
     # -------------------------------------------------------------------
     # Lead follow-up (post-synthesis)

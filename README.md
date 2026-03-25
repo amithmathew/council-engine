@@ -72,41 +72,43 @@ Environment variables override the config file: `COUNCIL_GEMINI_API_KEY`, `COUNC
 
 ## Usage
 
+Council has two modes: an **interactive REPL** for exploratory sessions, and **CLI commands** for one-shot queries and scripting.
+
 ### Interactive REPL
 
 ```bash
 council
 ```
 
-Launches a persistent session with tab completion, slash commands, and multi-model deliberation by default. Type a question and press Enter to convene the full council.
+Launches a persistent session with tab completion, slash commands, and multi-model deliberation. This is the recommended way to use Council for exploratory work — you can run discussions, follow up with the lead model, reconvene, attach files, and manage conversations all in one session.
 
-- `@gemini <msg>` — send to a single model
-- `/attach <file>` — attach files for the council to read
-- `/discuss <prompt>` — reconvene after follow-up
-- `/new` — start a new conversation
-- `/resume <name>` — resume a past conversation
+- `message` — convene the full council
+- `@gemini <msg>` — send to a single model directly
+- `/discuss <prompt>` — reconvene the council after follow-up
+- `/attach <file>` — attach files for the next message
+- `/save` — save the last response to a file
+- `/new` / `/resume <name>` — manage conversations
+- `/help` — full command list
 
-### Structured deliberation
+### CLI commands
 
-```bash
-council discuss --models gemini,claude "Should we use event sourcing or CRUD for our collaborative editor?"
-```
-
-Runs the full 3-stage protocol (Proposals → Critique → Resolution) and outputs the result.
-
-### Quick query
+CLI commands are fire-and-forget — they run once and exit. Use them for scripting, pipelines, and quick queries.
 
 ```bash
-council ask --model chatgpt "What are the tradeoffs of gRPC vs REST for internal services?"
+# Multi-model deliberation (proposals → critique → resolution)
+council discuss --models gemini,claude "Should we use event sourcing or CRUD?"
+
+# Single-model query
+council ask --model chatgpt "What are the tradeoffs of gRPC vs REST?"
+
+# Multi-model chat in a named conversation
+council chat --models gemini,chatgpt my-project "Your message here"
+
+# Promote a one-shot ask into a named conversation
+council promote my-project
 ```
 
-Single-model query. Promote to a full conversation with `council promote <name>`.
-
-### Multi-model chat
-
-```bash
-council chat --models gemini,chatgpt,claude "my-conversation" "Your message here"
-```
+To follow up on a `council discuss` result interactively, launch the REPL with `council` and use `/resume`.
 
 ## Architecture
 

@@ -329,9 +329,8 @@ def cmd_delete(args: argparse.Namespace) -> None:
 
 def cmd_discuss(args: argparse.Namespace) -> None:
     """Launch a bounded 3-stage council discussion (proposals → critique → synthesis)."""
-    from council.orchestrator import run_discuss, run_lead_followup
+    from council.orchestrator import run_discuss
     from council.renderers import create_renderer
-    from council.events import UiEvent
 
     models_str = getattr(args, "models", None) or os.environ.get("COUNCIL_MODELS", None)
     if models_str:
@@ -408,74 +407,12 @@ def cmd_discuss(args: argparse.Namespace) -> None:
         interactive=is_interactive,
     ))
 
-    # Post-synthesis follow-up loop (interactive TTY only, multi-model only)
-    if not is_interactive or len(providers) <= 1:
-        return
-
-    lead = providers[0]
-    # Resolve conversation name for follow-ups
-    if conversation_name is None:
-        rows = db.execute(
-            "SELECT name FROM conversations WHERE session_id IS ? ORDER BY updated_at DESC LIMIT 1",
-            (session_id,),
-        ).fetchall()
-        if rows:
-            conversation_name = rows[0]["name"]
-        else:
-            return
-
-    conv_id = get_or_create_conversation(db, conversation_name, session_id, system)
-
-    while True:
-        try:
-            followup = input(f"\nlead ({lead.name})> ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
-
-        if not followup:
-            continue
-        if followup.lower() in ("/exit", "/quit", "q", "exit"):
-            break
-
-        # /discuss reconvenes the full council
-        if followup.startswith("/discuss"):
-            discuss_prompt = followup[len("/discuss"):].strip()
-            if not discuss_prompt:
-                print("Type your message to reconvene the council.", file=sys.stderr)
-                continue
-            _run_async(run_discuss(
-                db=db,
-                prompt=discuss_prompt,
-                providers=providers,
-                session_id=session_id,
-                system=system,
-                conversation_name=conversation_name,
-                sink=renderer,
-                interactive=True,
-            ))
-            continue
-
-        # Default: lead model follow-up
-        result = _run_async(run_lead_followup(
-            lead=lead,
-            prompt=followup,
-            db=db,
-            conv_id=conv_id,
-            system=system,
-            sink=renderer,
-        ))
-        if result == "reconvene":
-            renderer.emit(UiEvent(type="status", text="Reconvening the full council..."))
-            _run_async(run_discuss(
-                db=db,
-                prompt=followup,
-                providers=providers,
-                session_id=session_id,
-                system=system,
-                conversation_name=conversation_name,
-                sink=renderer,
-                interactive=True,
-            ))
+    # Hint: use the REPL for interactive follow-up
+    if is_interactive and len(providers) > 1:
+        print(
+            "\n  To follow up interactively, launch the REPL: council",
+            file=sys.stderr,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -814,7 +751,11 @@ def cmd_init(_args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="council",
-        description="Multi-model brainstorm CLI",
+        description="Multi-model brainstorm CLI.\n\n"
+            "Two modes of use:\n"
+            "  council              Interactive REPL — follow-ups, conversations, attachments\n"
+            "  council <command>    One-shot CLI — scripting, pipelines, quick queries\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true",
@@ -860,7 +801,7 @@ def main() -> None:
     p_del.add_argument("--session", default=None, help="Session tag to disambiguate")
 
     # discuss
-    p_discuss = sub.add_parser("discuss", help="Bounded 3-stage council (proposals → critique → synthesis)")
+    p_discuss = sub.add_parser("discuss", help="One-shot council discussion (proposals → critique → synthesis). Use the REPL for follow-ups")
     p_discuss.add_argument("prompt", nargs="?", default=None, help="The topic or question to discuss (prompted if omitted)")
     p_discuss.add_argument("--models", default=None, help="Comma-separated provider names (default: all available)")
     p_discuss.add_argument("--name", default=None, help="Conversation name (auto-generated if omitted)")
