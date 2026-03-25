@@ -1,0 +1,757 @@
+---
+import "../styles/global.css";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="Council Architecture — Event bus, bounded protocol, audit trail, sandboxed operations, and provider abstraction." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=block" as="style" />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=block" rel="stylesheet" />
+    <title>Architecture — Council</title>
+  </head>
+  <body>
+
+    <!-- Nav -->
+    <nav class="site-nav">
+      <div class="nav-inner wrap-lg">
+        <a href="/" class="nav-logo">Council</a>
+        <div class="nav-links">
+          <a href="/#protocol">Protocol</a>
+          <a href="/#science">Science</a>
+          <a href="/architecture" class="nav-active">Architecture</a>
+          <a href="/#start">Start</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Header -->
+    <section class="arch-hero">
+      <div class="wrap-md">
+        <p class="eyebrow">Architecture</p>
+        <h1>Built for auditability and local control</h1>
+        <p class="arch-hero-lead">
+          Council is not a prompt chain. It is a bounded protocol with explicit stages,
+          typed events, sandboxed operations, and a persistent audit trail. This page
+          describes the system properties that make it trustworthy for high-stakes use.
+        </p>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Event Bus -->
+    <section id="event-bus">
+      <div class="wrap-sm">
+        <p class="eyebrow">Core abstraction</p>
+        <h2>Event Bus</h2>
+
+        <p>
+          All orchestrator operations emit typed events to a sink. The protocol produces
+          events; renderers consume them. This decoupling means the deliberation logic
+          does not depend on any specific UI surface.
+        </p>
+
+        <p>
+          Events carry structured fields such as participant, stage, elapsed time, critique
+          kind, and target, along with auxiliary metadata like resolution type or source.
+          The same event stream can drive a terminal renderer, a web board, a log file,
+          or downstream tooling.
+        </p>
+
+        <div class="arch-detail-card">
+          <h3>Event types</h3>
+          <div class="event-grid">
+            <div class="event-group">
+              <span class="event-group-label">Lifecycle</span>
+              <code>stage_start</code>
+              <code>stage_end</code>
+              <code>generation_start</code>
+              <code>generation_end</code>
+            </div>
+            <div class="event-group">
+              <span class="event-group-label">Deliberation</span>
+              <code>response</code>
+              <code>pass</code>
+              <code>critique</code>
+              <code>status</code>
+              <code>error</code>
+            </div>
+            <div class="event-group">
+              <span class="event-group-label">Operations</span>
+              <code>operator_request</code>
+              <code>chair_request</code>
+              <code>chair_response</code>
+              <code>write_proposed</code>
+              <code>write_approved</code>
+              <code>write_denied</code>
+            </div>
+          </div>
+        </div>
+
+        <p>
+          Two renderers ship with Council: a plain-text renderer for pipes and
+          non-interactive contexts (CI, Claude Code), and a Rich-based terminal renderer
+          for interactive sessions with color-coded participants, markdown rendering, and
+          timing information.
+        </p>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Bounded Protocol -->
+    <section id="bounded-protocol">
+      <div class="wrap-sm">
+        <p class="eyebrow">Protocol design</p>
+        <h2>Bounded stages with explicit tool sets</h2>
+
+        <p>
+          Each stage of the protocol has a distinct purpose and a distinct set of available
+          tools. Models cannot write files during proposals. They cannot propose during
+          critique. Tool availability is enforced structurally by the orchestrator &mdash;
+          each stage receives a different tool set. Output formats and interaction norms
+          (proposal structure, critique categories, resolution types) are guided by
+          stage-specific system prompts.
+        </p>
+
+        <div class="arch-detail-card">
+          <h3>Tool availability by stage</h3>
+          <table class="tool-table">
+            <thead>
+              <tr>
+                <th>Stage</th>
+                <th>Available tools</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>Proposals</code></td>
+                <td>list_attachments, read_attachment, read_file, find_files, request_info</td>
+              </tr>
+              <tr>
+                <td><code>Critique</code></td>
+                <td>All proposal tools + call_pass, call_contribute(kind, message, target)</td>
+              </tr>
+              <tr>
+                <td><code>Resolution</code></td>
+                <td>No tools &mdash; structured JSON generation only (resolution type + markdown)</td>
+              </tr>
+              <tr>
+                <td><code>Follow-up</code></td>
+                <td>All proposal tools + write_file, edit_file, call_council (reconvene)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          The critique stage uses a structured vocabulary. Participants must categorize
+          every contribution as a <strong>challenge</strong>, <strong>alternative</strong>,
+          <strong>refinement</strong>, or <strong>question</strong>, with an explicit target.
+          Participants can also pass &mdash; signaling that they have no material objection.
+          Silence is treated as approval.
+        </p>
+
+        <p>
+          Synthesis produces one of four resolution types:
+        </p>
+
+        <div class="resolution-detail-grid">
+          <div class="resolution-detail">
+            <h3>Recommendation</h3>
+            <p>Council substantially agrees or one position dominates. Single clear guidance with reasoning, risks, and next steps.</p>
+          </div>
+          <div class="resolution-detail">
+            <h3>Alternatives</h3>
+            <p>Two or three materially different approaches remain viable. Presented with a default choice and decision rules &mdash; not a merged compromise.</p>
+          </div>
+          <div class="resolution-detail">
+            <h3>Question</h3>
+            <p>A single missing fact is decisive. The output is a sharp clarifying question with conditional recommendations for each likely answer.</p>
+          </div>
+          <div class="resolution-detail">
+            <h3>Investigate</h3>
+            <p>Disagreement depends on verifiable evidence. The output is an investigation plan with a provisional default while evidence is gathered.</p>
+          </div>
+        </div>
+
+        <h3>Failure handling and graceful degradation</h3>
+
+        <p>
+          The protocol handles real-world failures at every stage. Provider calls time out
+          after 180 seconds. The tool-calling loop in proposals and critique is capped at
+          3 iterations, after which the participant defaults to a pass. If the resolver
+          returns invalid JSON, the system falls back to a plain-text recommendation.
+        </p>
+
+        <p>
+          Resolution types interact with the rest of the system. A <strong>Question</strong>
+          resolution prompts the human for a clarifying answer and re-runs resolution with
+          the new input. An <strong>Investigate</strong> resolution triggers the Chair to
+          gather evidence from the workspace, then re-resolves with findings. Single-model
+          sessions skip critique and resolution entirely.
+        </p>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Audit Trail -->
+    <section id="audit-trail">
+      <div class="wrap-sm">
+        <p class="eyebrow">Persistence</p>
+        <h2>Persistent audit trail</h2>
+
+        <p>
+          Every deliberation is persisted in a local SQLite database with WAL journaling.
+          Proposals, critiques, tool actions, synthesis results, and follow-up exchanges are
+          stored as structured records with full metadata.
+        </p>
+
+        <div class="arch-detail-card">
+          <h3>What is stored</h3>
+          <ul class="detail-list">
+            <li><strong>Conversations</strong> &mdash; name, session ID, system instruction, timestamps</li>
+            <li><strong>Messages</strong> &mdash; participant, content, attachments, and structured metadata including stage, action type, critique kind, target, and model ID</li>
+            <li><strong>Attachments</strong> &mdash; files stored by UUID in <code>~/.council/attachments/</code> with MIME type and size tracking</li>
+          </ul>
+        </div>
+
+        <p>
+          Session tagging groups conversations logically. You can list, review, and extend
+          past councils. The same conversation name can exist in different sessions,
+          supporting per-project or per-day organization.
+        </p>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Chair / Sandbox -->
+    <section id="sandbox">
+      <div class="wrap-sm">
+        <p class="eyebrow">Security boundary</p>
+        <h2>The Chair subsystem</h2>
+
+        <p>
+          Models can request file reads, searches, and writes through their available tools &mdash;
+          but every one of those operations routes through a mediation layer called the Chair.
+          The Chair validates paths, enforces boundaries, logs every operation to the event
+          stream, and falls back to the human operator when it cannot resolve a request
+          autonomously.
+        </p>
+
+        <p>
+          The metaphor is an advisory board: participants can ask for documents, but the
+          chair decides what to hand over and where deliverables can be filed. Read access
+          is broad; write access is confined.
+        </p>
+
+        <h3>Why mediation matters</h3>
+
+        <p>
+          When you give AI models file access, the natural instinct is to either give them
+          full access (dangerous) or no access (useless). The Chair provides a middle path:
+          broad read access for context, narrow write access for deliverables, and explicit
+          human approval for anything destructive. Every operation is recorded in the event
+          stream, so there are no silent side effects.
+        </p>
+
+        <div class="arch-detail-card">
+          <h3>Operation boundaries</h3>
+          <ul class="detail-list">
+            <li><strong>Reads</strong> &mdash; workspace-wide, text files only, truncated at 50KB. Symlink targets are validated to prevent escape from the workspace boundary.</li>
+            <li><strong>Writes</strong> &mdash; restricted to <code>./council-output/</code> directory only. Overwrites in interactive mode require explicit human confirmation.</li>
+            <li><strong>Edits</strong> &mdash; find-and-replace with a unique match requirement, preventing ambiguous modifications. Output directory only.</li>
+            <li><strong>Discovery</strong> &mdash; glob-based file search across the workspace, with automatic exclusion of generated directories (node_modules, __pycache__, .venv, dist, build).</li>
+          </ul>
+        </div>
+
+        <h3>The info request fallback chain</h3>
+
+        <p>
+          When a participant needs information that isn't a straightforward file read, they
+          make an <code>request_info</code> call. The Chair resolves it through a three-step
+          fallback:
+        </p>
+
+        <div class="arch-detail-card">
+          <h3>Resolution order</h3>
+          <ol class="detail-list numbered">
+            <li><strong>File heuristic</strong> &mdash; the Chair parses the question for file path references and attempts to read the relevant file directly.</li>
+            <li><strong>Workspace listing</strong> &mdash; if the question is about project structure, the Chair returns a directory listing automatically.</li>
+            <li><strong>Human operator</strong> &mdash; if neither heuristic applies, the Chair prompts the human for an answer in interactive mode. If no human is available, the participant is told to proceed with best judgment and state assumptions explicitly.</li>
+          </ol>
+        </div>
+
+        <p>
+          This chain means participants get answers fast when the workspace has what they
+          need, and gracefully degrade to asking the human only when necessary. Every
+          resolution &mdash; whether from a file, the workspace, or the operator &mdash; is
+          recorded with its source for auditability.
+        </p>
+
+        <h3>Write event lifecycle</h3>
+
+        <p>
+          Write operations follow an explicit lifecycle tracked in the event stream:
+          <code>write_proposed</code> when a participant requests a write,
+          <code>write_approved</code> when the Chair permits it, and
+          <code>write_denied</code> when it is rejected (either by policy or by the
+          human operator). This makes every file modification inspectable after the fact.
+        </p>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Provider Abstraction -->
+    <section id="providers">
+      <div class="wrap-sm">
+        <p class="eyebrow">Extensibility</p>
+        <h2>Provider abstraction</h2>
+
+        <p>
+          Council defines a provider protocol that any LLM backend can implement. Each
+          provider handles its own message formatting, tool schema translation, and
+          response parsing. The orchestrator operates against the protocol interface,
+          not against specific APIs.
+        </p>
+
+        <div class="arch-detail-card">
+          <h3>Provider interface</h3>
+          <ul class="detail-list">
+            <li><code>generate()</code> &mdash; async text generation with system instruction</li>
+            <li><code>generate_structured()</code> &mdash; structured JSON output for pass/contribute decisions</li>
+            <li><code>generate_with_tools()</code> &mdash; agentic tool-calling loop with provider-native formats</li>
+            <li><code>format_tools()</code> &mdash; translates internal ToolSpec to provider-native tool schemas</li>
+            <li><code>extract_tool_calls()</code> &mdash; parses tool calls from provider-specific response formats</li>
+          </ul>
+        </div>
+
+        <p>
+          A provider registry checks availability at runtime based on configured
+          credentials, initializes providers lazily on first use, and caches instances.
+          All stage executions run providers in parallel via <code>asyncio.gather</code>,
+          so adding more models does not increase wall-clock latency.
+        </p>
+
+        <p>
+          Ships with four providers:
+        </p>
+
+        <div class="arch-detail-card">
+          <h3>Included providers</h3>
+          <ul class="detail-list">
+            <li><strong>Gemini</strong> &mdash; Google AI Studio (API key) or Vertex AI (ADC). Includes Google Search grounding for web-informed responses.</li>
+            <li><strong>ChatGPT</strong> &mdash; OpenAI Responses API with <code>web_search_preview</code> for web-grounded responses.</li>
+            <li><strong>Claude</strong> &mdash; Anthropic Messages API with native tool use support. Structured output via forced tool_choice.</li>
+            <li><strong>Ollama</strong> &mdash; local models via HTTP API. Graceful degradation for models that do not support tool calling &mdash; falls back to prompt-based tool injection.</li>
+          </ul>
+        </div>
+
+        <div class="arch-detail-card">
+          <h3>Implementation details worth noting</h3>
+          <ul class="detail-list">
+            <li>Gemini disables <code>AutomaticFunctionCallingConfig</code> so the orchestrator retains strict control over the tool execution loop &mdash; the model proposes tool calls, but the orchestrator decides whether to execute them.</li>
+            <li>The OpenAI provider throttles reasoning effort to <code>none</code> when web search is active, preventing the model from spiraling into unbounded search loops.</li>
+            <li>The Claude provider handles strict user/assistant message alternation by merging consecutive same-role messages before sending to the API.</li>
+            <li>The Ollama provider attempts native tool calling first, then falls back to prompt-injected tool descriptions if the model returns a 200 with no tool calls &mdash; the most common local-model failure mode.</li>
+            <li>Binary file attachments (PDFs, images) are sent only on the most recent user message, with text placeholders substituted for historical messages to prevent token bloat across long conversations.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- REPL -->
+    <section id="repl">
+      <div class="wrap-sm">
+        <p class="eyebrow">Interface</p>
+        <h2>Interactive REPL</h2>
+
+        <p>
+          Running <code>council</code> with no arguments launches an interactive session
+          built on prompt_toolkit. The REPL maintains a single async event loop for the
+          entire session, allowing seamless task cancellation with Ctrl+C without exiting.
+        </p>
+
+        <div class="arch-detail-card">
+          <h3>REPL capabilities</h3>
+          <ul class="detail-list">
+            <li>Context-aware tab completion for commands, model names, file paths, and conversation names</li>
+            <li>Dynamic prompt showing current model, conversation, attachment count, and post-synthesis state</li>
+            <li>Slash commands: <code>/attach</code>, <code>/files</code>, <code>/new</code>, <code>/resume</code>, <code>/rename</code>, <code>/discuss</code>, <code>/history</code>, <code>/save</code></li>
+            <li>Default Enter triggers full council protocol; <code>@model</code> prefix for single-model escape hatch</li>
+            <li>Mode-aware prompt that switches between council mode and lead follow-up mode after resolution</li>
+          </ul>
+        </div>
+
+        <p>
+          File attachments support text, code, PDFs, and images. Attached files are stored
+          persistently and available to models via tool calls throughout the conversation.
+        </p>
+      </div>
+    </section>
+
+    <hr class="section-sep" />
+
+    <!-- Two Integration Surfaces -->
+    <section id="integration">
+      <div class="wrap-sm">
+        <p class="eyebrow">Integration</p>
+        <h2>Two integration surfaces</h2>
+
+        <p>
+          Council was designed from the start for two distinct consumers: humans in an
+          interactive terminal and automation running Council through CLI commands and
+          subprocesses. These are not an afterthought bolted onto a single interface &mdash;
+          they are separate, first-class surfaces with different renderers, different
+          interaction models, and different output expectations.
+        </p>
+
+        <div class="arch-detail-card">
+          <h3>Human surface: interactive REPL</h3>
+          <p class="card-desc">
+            The REPL provides a persistent async session with rich terminal output,
+            color-coded participants, pause points between stages, and post-synthesis
+            follow-up. Default Enter runs the full council protocol. Humans can interrupt,
+            review intermediate proposals, and steer the conversation interactively.
+          </p>
+        </div>
+
+        <div class="arch-detail-card">
+          <h3>Automation surface: CLI and subprocess</h3>
+          <p class="card-desc">
+            <code>council chat</code>, <code>council discuss</code>, and <code>council ask</code>
+            run as non-interactive commands that emit plain-text output suitable for
+            subprocess consumption. An AI coding assistant can invoke Council as a subprocess,
+            pass a question that benefits from multi-model input, and parse the structured
+            response &mdash; all without human intervention. The <code>ask</code> &rarr;
+            <code>promote</code> flow lets lightweight one-shot queries become persistent
+            named conversations when they turn out to be worth continuing.
+          </p>
+        </div>
+
+        <h3>Why this matters</h3>
+
+        <p>
+          Most multi-model tools assume a human is always in the loop. Council does not.
+          The event bus architecture means the same deliberation can be rendered as a rich
+          terminal session for a human or as structured plain text for an agent &mdash;
+          the protocol is identical either way.
+        </p>
+
+        <p>
+          This makes Council composable. An AI coding assistant can convene a council
+          for an architecture decision, read the synthesis, and continue its work. A CI
+          pipeline could run a council review on a pull request. A research workflow could
+          batch-run deliberations and compare synthesis quality across model combinations.
+          The deliberation protocol is the stable primitive; how it gets consumed is up
+          to the caller.
+        </p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="wrap-md footer-inner">
+        <span class="footer-logo">Council</span>
+        <span class="footer-sep">&middot;</span>
+        <a href="/">Home</a>
+        <span class="footer-sep">&middot;</span>
+        <a href="https://github.com/amithmathew/council-engine" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </footer>
+
+  </body>
+</html>
+
+<style>
+  /* Nav (shared with index) */
+  .site-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: var(--nav-height);
+    background: rgba(11, 13, 16, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .nav-logo {
+    font-family: var(--font-heading);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 28px;
+  }
+
+  .nav-links a {
+    font-family: var(--font-code);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .nav-links a:hover,
+  .nav-links a.nav-active {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  /* Hero */
+  .arch-hero {
+    padding-top: 128px;
+    padding-bottom: 64px;
+  }
+
+  .arch-hero h1 {
+    font-size: var(--fs-h2);
+    margin-bottom: 24px;
+  }
+
+  .arch-hero-lead {
+    font-size: var(--fs-body-lg);
+    color: var(--text-soft);
+    max-width: 60ch;
+    line-height: 1.7;
+  }
+
+  /* Detail cards */
+  .arch-detail-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px;
+    margin-block: 24px;
+  }
+
+  .arch-detail-card h3 {
+    font-family: var(--font-code);
+    font-size: var(--fs-small);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  /* Event grid */
+  .event-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  @media (max-width: 640px) {
+    .event-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .event-group-label {
+    display: block;
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .event-group code {
+    display: block;
+    font-size: 13px;
+    color: var(--text-soft);
+    margin-bottom: 4px;
+  }
+
+  /* Tool table */
+  .tool-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-small);
+  }
+
+  .tool-table th {
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: left;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line-strong);
+  }
+
+  .tool-table td {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--text-soft);
+    vertical-align: top;
+  }
+
+  .tool-table td:first-child {
+    width: 120px;
+    padding-right: 20px;
+  }
+
+  .tool-table td code {
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  /* Resolution detail grid */
+  .resolution-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-block: 24px;
+  }
+
+  @media (max-width: 640px) {
+    .resolution-detail-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .resolution-detail {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .resolution-detail h3 {
+    font-family: var(--font-code);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--synth);
+    margin-bottom: 8px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .resolution-detail p {
+    font-size: 13px;
+    color: var(--text-soft);
+    line-height: 1.55;
+    max-width: none;
+    margin: 0;
+  }
+
+  /* Detail list */
+  .detail-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .detail-list li {
+    font-size: var(--fs-small);
+    color: var(--text-soft);
+    line-height: 1.6;
+    margin-bottom: 8px;
+    padding-left: 16px;
+    position: relative;
+  }
+
+  .detail-list li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--line-strong);
+  }
+
+  .detail-list.numbered {
+    counter-reset: step;
+  }
+
+  .detail-list.numbered li::before {
+    counter-increment: step;
+    content: counter(step);
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: none;
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    top: 1px;
+  }
+
+  .detail-list li code {
+    font-size: 13px;
+  }
+
+  .card-desc {
+    font-size: var(--fs-small);
+    color: var(--text-soft);
+    line-height: 1.6;
+    max-width: none;
+    margin: 0;
+  }
+
+  .card-desc code {
+    font-size: 13px;
+  }
+
+  /* Footer */
+  .site-footer {
+    padding: 40px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: var(--fs-small);
+    color: var(--text-faint);
+    flex-wrap: wrap;
+  }
+
+  .footer-logo {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .footer-sep {
+    color: var(--line-strong);
+  }
+
+  @media (max-width: 640px) {
+    .nav-links {
+      display: none;
+    }
+  }
+</style>

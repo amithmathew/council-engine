@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Environment & secrets
+.env
+.env.*
+
+# Database
+*.db
+*.sqlite*
+
+# Council runtime
+council-output/
+.council/
+
+# Site build
+site/dist/
+site/node_modules/
+site/.astro/
+
+# IDE & tools
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Personal files
+advisory_board_validation_playbook.md
