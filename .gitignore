@@ -5,8 +5,12 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.eggs/
 .venv/
 venv/
+
+# Testing
+.pytest_cache/
 
 # Environment & secrets
 .env
